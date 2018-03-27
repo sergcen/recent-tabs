@@ -1,0 +1,40 @@
+{
+  "manifest_version": 2,
+
+  "name": "Recent-tabs",
+  "description": "Very fast switching tabs",
+  "version": "1.0",
+
+  "icons": {
+    "16": "icon-16.png",
+    "128": "icon-128.png"
+  },
+
+  "browser_action": {
+    "default_icon": {},
+    "default_title": "tabs-popup",
+    "default_popup": "dist/popup.html"
+  },
+  "commands": {
+    "_execute_browser_action": {
+      "suggested_key": {
+        "windows": "Ctrl+E",
+        "mac": "Command+E",
+        "chromeos": "Ctrl+E",
+        "linux": "Ctrl+E"
+      }
+    }
+  },
+  "background": {
+    "scripts": [
+      "dist/background.js"
+    ]
+  },
+
+  "permissions": [
+    "history",
+    "tabs",
+    "storage"
+  ],
+  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'"
+}

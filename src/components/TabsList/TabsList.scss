@@ -1,0 +1,51 @@
+.tabs-list {
+    &__header {
+        margin: 10px 0;
+        font-size: 14px;
+        color: #AAA;
+    }
+
+    &__item {
+        display: flex;
+        align-items: center;
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        line-height: 16px;
+        padding: 6px 4px;
+        margin: 0 -4px;
+        font-weight: normal;
+        border-bottom: 1px solid #ececec;
+        transition: 50ms background-color linear;
+
+        &_selected {
+            background-color: rgba(0, 137, 255, 0.1803921568627451);
+        }
+    }
+
+    &__favicon {
+        min-width: 20px;
+        height: 20px;
+        margin-right: 10px;
+        border-radius: 2px;
+        flex-basis: 20px;
+
+        img {
+            width: 100%;
+            height: 100%;
+        }
+    }
+
+    &__item-content {
+        display: inline-block;
+    }
+
+    &__item-host {
+        font-size: 12px;
+        color: #aaa;
+    }
+}
+
+
+
