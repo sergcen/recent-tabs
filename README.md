@@ -1,5 +1,5 @@
 # Recent-tabs
-Fast switch between tabs
+Fast switch between tabs, see [chrome web store](https://chrome.google.com/webstore/detail/aamlejepmlabpimifejjnmkjcolooifi)
 
 features:
 * show all opened tabs in popup, sorted by last usage
