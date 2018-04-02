@@ -8,7 +8,7 @@ features:
 Browsers: Chrome, YandexBrowser
 
 ## Hotkeys
-CMD + E - open tabs popup (default for MAC, for Windows users set it manually)
-SHIFT + arrowRight - close selected tab
-SHIFT + arrowDown - closes everything tabs to the bottom, including selected
-CMD + C - copy URL of selected tab (CTRL + C for windows users)
+* CMD + E - open tabs popup (default for MAC, for Windows users set it manually)
+* SHIFT + arrowRight - close selected tab
+* SHIFT + arrowDown - closes everything tabs to the bottom, including selected
+* CMD + C - copy URL of selected tab (CTRL + C for windows users)
