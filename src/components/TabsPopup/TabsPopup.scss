@@ -1,5 +1,8 @@
 body {
     font-size: 28px;
+    width: 100%;
+    margin: 0;
+    padding: 0;
 }
 
 .filterInput {
@@ -7,7 +10,7 @@ body {
     line-height: 40px;
     height: 40px;
     display: block;
-    width: 100%;
+    width: calc(100% - 16px);
     box-sizing: border-box;
-    margin-bottom: 10px;
+    margin: 8px 8px 10px 8px;
 }

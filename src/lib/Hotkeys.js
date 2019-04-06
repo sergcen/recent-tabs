@@ -5,11 +5,11 @@ const checkKey = (e, key) => {
     return e.key === key;
 };
 
-const hotkeys = (event, actions) => {
+const Hotkeys = (event, actions) => {
     const hotkeys = Object.keys(actions);
 
     const hasAction = hotkeys.some(hotkey => {
-        const isMatch = hotkey.split('+').every((key) => checkKey(event, key));
+        const isMatch = hotkey.split('+').every(key => checkKey(event, key));
 
         if (isMatch) {
             actions[hotkey]();
@@ -21,4 +21,4 @@ const hotkeys = (event, actions) => {
     hasAction && event.preventDefault();
 };
 
-export default hotkeys;
+export default Hotkeys;

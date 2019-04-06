@@ -1,4 +1,9 @@
 .tabs-list {
+    width: 600px;
+    overflow: hidden;
+    padding: 0 8px;
+    box-sizing: border-box;
+
     &__header {
         margin: 10px 0;
         font-size: 14px;
@@ -13,14 +18,22 @@
         overflow: hidden;
         text-overflow: ellipsis;
         line-height: 16px;
-        padding: 6px 4px;
-        margin: 0 -4px;
+        padding: 6px 8px;
+        margin: 0 -8px;
         font-weight: normal;
         border-bottom: 1px solid #ececec;
         transition: 50ms background-color linear;
 
         &_selected {
-            background-color: rgba(0, 137, 255, 0.1803921568627451);
+            background-color: rgba(0, 137, 255, 0.18);
+        }
+
+        &_current {
+            color: #AAA;
+        }
+
+        b {
+            color: red;
         }
     }
 
