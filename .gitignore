@@ -1,4 +1,4 @@
 .idea/
 .cache
-extension/dist
+dist
 node_modules

@@ -3,12 +3,12 @@ Fast switch between tabs, see [chrome web store](https://chrome.google.com/webst
 
 features:
 * show all opened tabs in popup, sorted by last usage
-* 2-step search in browser history (if matched tabs count < 5)
+* 2-step search in browser history
 
 Browsers: Chrome, YandexBrowser
 
 ## Hotkeys
-* CMD + E - open tabs popup (default for MAC, for Windows users set it manually)
+* CMD + E - open popup (default for MAC, for Windows users set it manually)
 * SHIFT + arrowRight - close selected tab
-* SHIFT + arrowDown - closes everything tabs to the bottom, including selected
+* SHIFT + arrowDown - close everything tabs to the bottom, including selected
 * CMD + C - copy URL of selected tab (CTRL + C for windows users)

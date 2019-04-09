@@ -1,45 +1,112 @@
-const promisify = method => arg => new Promise(resolve => method(arg, resolve));
+import TabsStorage from './lib/TabsStorage';
+import SettingsStorage from './lib/Storage';
+import { selectTab, moveTab } from './lib/tabsApiWrapper';
 
-const storage = chrome.storage.local;
-const storageSet = promisify(storage.Set);
+const tabsStorage = new TabsStorage();
+const settingsStorage = new SettingsStorage();
 
-import { getTabsFromHistory, filterByTitle } from './lib/tabsApiWrapper';
+setInterval(() => tabsStorage.updateHistory(), 60000);
 
-const tabsActivationMap = {};
+const cleanTabs = async () => {
+    const { autoclose, autocloseMaxOpened } = settingsStorage;
 
-let cachedHistory = [];
+    if (!autoclose || !autocloseMaxOpened) return;
 
-const updateHistoryCache = () =>
-    getTabsFromHistory('', 1000, 60).then(history => (cachedHistory = history));
+    const tabs = await tabsStorage.getTabs();
+    const diffCount = autocloseMaxOpened - tabs.length;
 
-updateHistoryCache();
+    if (diffCount < 0) {
+        const ids = tabsStorage
+            .sortTabsByLastUsage(tabs)
+            .slice(diffCount)
+            .filter(tab => !tab.audible && !tab.pinned)
+            .map(t => t.id);
 
-setInterval(() => updateHistoryCache(), 60000 * 30);
+        ids.forEach(id => tabsStorage.removeTab(id));
+    }
+};
 
-const methods = {
-    getTabsWithActivations(tabs) {
-        return tabs
-            .map(tab => {
-                return Object.assign({}, tab, {
-                    lastActiveTime: tabsActivationMap[tab.id] || 0
-                });
-            })
-            .sort((tab1, tab2) => tab2.lastActiveTime - tab1.lastActiveTime);
-    },
+const noDublicate = async tabId => {
+    const { nodublicate, nodublicateCloseOlder } = settingsStorage;
 
-    async getTabsFromHistory(title) {
-        return getTabsFromHistory(title, 15, 365 * 5);
-    },
+    if (!nodublicate) return;
 
-    getTabsFromHistoryCache: function(title) {
-        return filterByTitle(cachedHistory, title);
+    const tabs = await tabsStorage.getTabs();
+    const tab = tabs.find(t => t.id === tabId);
+    const existsTab = tabs.find(t => t.id !== tab.id && t.url === tab.url);
+
+    if (!existsTab) return;
+
+    if (nodublicateCloseOlder) {
+        tabsStorage.removeTab(existsTab.id);
+    } else {
+        await tabsStorage.removeTab(tab.id);
+        selectTab(existsTab);
+    }
+};
+
+let sortTimeout = null;
+
+const sortTabsWithTimeout = () => {
+    const { sorting, sortingTimeout } = settingsStorage;
+    if (!sorting) return;
+
+    clearInterval(sortTimeout);
+
+    sortTimeout = setTimeout(sortTabs, sortingTimeout);
+};
+
+const sortTabs = async () => {
+    const { sorting, sortingReverse } = settingsStorage;
+
+    if (!sorting) return;
+
+    const tabs = await tabsStorage.getTabs();
+    const tabsMap = new Map(tabs.map((t, index) => [t.id, index]));
+
+    const sortedTabs = tabsStorage.sortTabsByLastUsage(tabs, sortingReverse);
+
+    const positions = sortedTabs
+        .map((tab, index) => {
+            return {
+                id: tab.id,
+                sortedIndex: index,
+                browserIndex: tabsMap.get(tab.id)
+            };
+        })
+        .filter(t => t.sortedIndex !== t.browserIndex);
+
+    for (const pos of positions) {
+        await moveTab(pos.id, { index: pos.sortedIndex });
     }
 };
 
 chrome.tabs.onActivated.addListener(info => {
-    tabsActivationMap[info.tabId] = Date.now();
-
-    storageSet({ 'tabs-activation-map': tabsActivationMap });
+    tabsStorage.addTab(info.tabId);
+    sortTabsWithTimeout();
 });
 
-window.methods = methods;
+let lastCreated = new Set();
+
+chrome.tabs.onUpdated.addListener((id, { status }) => {
+    if (lastCreated.has(id) && status === 'complete') {
+        noDublicate(id);
+        lastCreated.delete(id);
+    }
+});
+
+chrome.tabs.onCreated.addListener(tab => {
+    tabsStorage.addTab(tab.id);
+
+    cleanTabs();
+    lastCreated.add(tab.id);
+});
+
+window.tabsStorage = tabsStorage;
+window.settingsStorage = settingsStorage;
+
+(async () => {
+    await settingsStorage.ready;
+
+    cleanTabs();
+})();

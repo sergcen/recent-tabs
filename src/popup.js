@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-import Main from './components/Main';
+import TabsPopup from './components/TabsPopup';
 
-ReactDOM.render(<Main/>, document.getElementById('root'));
+ReactDOM.render(<TabsPopup />, document.getElementById('root'));

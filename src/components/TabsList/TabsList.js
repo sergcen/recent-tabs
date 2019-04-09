@@ -15,6 +15,7 @@ class TabsList extends Component {
     item(tab, selectedTab, onSelect, onChangeActiveItem, index) {
         const isActive = tab.id === (selectedTab && selectedTab.id);
         const activeClassName = isActive ? 'tabs-list__item_selected' : '';
+        const currentClassName = tab.active ? 'tabs-list__item_current' : '';
         const faviconUrl = tab.favIconUrl;
 
         if (isActive && index !== 0) {
@@ -22,11 +23,14 @@ class TabsList extends Component {
             domElem && onChangeActiveItem(domElem, tab);
         }
 
+        const title = this.hightlightText(tab.title, tab.__titleHightlights);
+        const url = this.hightlightText(tab.url, tab.__urlHightlights);
+
         return (
             <div
                 onClick={() => onSelect(tab)}
                 ref={item => item && this.domMap.set(tab, item)}
-                className={`tabs-list__item ${activeClassName}`}
+                className={`tabs-list__item ${activeClassName} ${currentClassName}`}
             >
                 {tab.windowId && (
                     <div className="tabs-list__favicon">
@@ -34,13 +38,21 @@ class TabsList extends Component {
                     </div>
                 )}
                 <div>
-                    {tab.title || tab.url}
-                    {!faviconUrl && (
-                        <div className="tabs-list__item-host">{tab.url}</div>
-                    )}
+                    {title || url}
+                    <div className="tabs-list__item-host">{url}</div>
                 </div>
             </div>
         );
+    }
+
+    hightlightText(text, bounds) {
+        if (!bounds) return text;
+
+        return [
+            text.slice(0, bounds[0]),
+            <b>{text.slice(bounds[0], bounds[1])}</b>,
+            text.slice(bounds[1])
+        ];
     }
 
     render() {
@@ -56,7 +68,7 @@ class TabsList extends Component {
         const hasTabs = tabs && tabs.length > 0;
 
         return (
-            <div>
+            <div className="tabs-list">
                 {header && <h6 className="tabs-list__header">{header}</h6>}
                 {hasTabs && (
                     <div className="tabs-list__items">

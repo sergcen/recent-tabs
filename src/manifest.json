@@ -3,7 +3,7 @@
 
   "name": "Recent-tabs",
   "description": "Very fast switching tabs",
-  "version": "1.0",
+  "version": "1.1",
 
   "icons": {
     "16": "icon-16.png",
@@ -13,7 +13,11 @@
   "browser_action": {
     "default_icon": {},
     "default_title": "tabs-popup",
-    "default_popup": "dist/popup.html"
+    "default_popup": "popup.html"
+  },
+  "options_ui": {
+    "page": "settings.html",
+    "open_in_tab": false
   },
   "commands": {
     "_execute_browser_action": {
@@ -27,14 +31,15 @@
   },
   "background": {
     "scripts": [
-      "dist/background.js"
+      "background.js"
     ]
   },
 
   "permissions": [
     "history",
     "tabs",
-    "storage"
+    "storage",
+    "unlimitedStorage"
   ],
   "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'"
 }
