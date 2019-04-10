@@ -1,17 +1,18 @@
-import React, { Component } from 'React';
+import React, { Component } from 'react';
 import TabsList from '../TabsList';
 
-import './TabsPopup.scss';
-
 import throttle from 'lodash.throttle';
-import Hotkeys from '../../lib/hotkeys';
+import Hotkeys from '../../lib/Hotkeys';
+import "../../polyfills/scrollIntoViewIfNeeded";
 
 import {
     createTab,
     selectTab,
     getBackgroundPage,
     isTab
-} from '../../lib/tabsApiWrapper';
+} from '../../lib/TabsApiWrapper';
+
+import './TabsPopup.scss';
 
 const updateScrollFn = throttle(elem => elem.scrollIntoViewIfNeeded(), 100);
 
@@ -200,6 +201,7 @@ class TabsPopup extends Component {
     submitSelectTab(tab) {
         // if selected tab from history
         isTab(tab) ? selectTab(tab) : createTab(tab);
+        window.close();
     }
 
     render() {
@@ -209,20 +211,21 @@ class TabsPopup extends Component {
             this.state.tabsHistorySearch ||
             (tabsHistory && tabsHistory.length > 0);
 
-        return [
+        return (
+        <React.Fragment>
             <input
                 ref={input => (this.input = input)}
                 type="text"
                 className="filterInput"
                 onKeyDown={e => this.onKeyHandler(e)}
                 onChange={e => this.updateTabsList(e.target.value)}
-            />,
+            />
             <TabsList
                 tabs={tabs}
                 selectedTab={selectedTab}
                 onSelect={tab => this.submitSelectTab(tab)}
                 onChangeActiveItem={updateScrollFn}
-            />,
+            />
             <TabsList
                 header={showHistoryHeader && 'История'}
                 tabs={tabsHistory}
@@ -231,7 +234,8 @@ class TabsPopup extends Component {
                 isLoading={this.state.tabsHistorySearch}
                 onChangeActiveItem={updateScrollFn}
             />
-        ];
+        </React.Fragment>
+        );
     }
 }
 

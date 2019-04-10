@@ -1,17 +1,15 @@
-import promisify from './promisify'
+const searchInHistory = browser.history.search;
+const removeBrowserTab = browser.tabs.remove;
 
-const searchInHistory = promisify(chrome.history.search);
-const removeBrowserTab = promisify(chrome.tabs.remove);
-
-export const getBrowserTabs = promisify(chrome.tabs.query);
-export const getBackgroundPage = promisify(chrome.runtime.getBackgroundPage);
-export const moveBrowserTab = promisify(chrome.tabs.move);
+export const getBrowserTabs = browser.tabs.query;
+export const getBackgroundPage = browser.runtime.getBackgroundPage;
+export const moveBrowserTab = browser.tabs.move;
 
 export const getActiveTabIndex = tabs => tabs.findIndex(tab => tab.active);
 
 export const selectTab = ({ windowId, id }) => {
-    chrome.windows.update(windowId, { focused: true });
-    chrome.tabs.update(id, { active: true });
+    browser.windows.update(windowId, { focused: true });
+    browser.tabs.update(id, { active: true });
 };
 
 export const moveTab = (id, options) => {
@@ -19,7 +17,7 @@ export const moveTab = (id, options) => {
 };
 
 export const createTab = ({ url }) => {
-    chrome.tabs.create({ active: true, url }, () => {});
+    browser.tabs.create({ active: true, url });
 };
 
 export const removeTab = async ({ id }) => {

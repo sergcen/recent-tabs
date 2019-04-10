@@ -1,4 +1,4 @@
-import React, { Component } from 'React';
+import React, { Component } from 'react';
 import Spinner from '../Spinner';
 
 import './TabsList.scss';
@@ -27,7 +27,8 @@ class TabsList extends Component {
         const url = this.hightlightText(tab.url, tab.__urlHightlights);
 
         return (
-            <div
+            <li
+                key={tab.id.toString()}
                 onClick={() => onSelect(tab)}
                 ref={item => item && this.domMap.set(tab, item)}
                 className={`tabs-list__item ${activeClassName} ${currentClassName}`}
@@ -38,10 +39,10 @@ class TabsList extends Component {
                     </div>
                 )}
                 <div>
-                    {title || url}
+                <p className="tabs-list__item-title">{tab.title || tab.url}</p>
                     <div className="tabs-list__item-host">{url}</div>
                 </div>
-            </div>
+            </li>
         );
     }
 
@@ -71,7 +72,7 @@ class TabsList extends Component {
             <div className="tabs-list">
                 {header && <h6 className="tabs-list__header">{header}</h6>}
                 {hasTabs && (
-                    <div className="tabs-list__items">
+                    <ul className="tabs-list__items">
                         {tabs.map((tab, index) =>
                             this.item(
                                 tab,
@@ -81,7 +82,7 @@ class TabsList extends Component {
                                 index
                             )
                         )}
-                    </div>
+                    </ul>
                 )}
                 {isLoading && <Spinner />}
             </div>

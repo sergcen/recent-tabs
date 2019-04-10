@@ -1,8 +1,5 @@
-import promisify from './promisify'
-
-const storage = chrome.storage.local;
-const storageSet = promisify(storage.set);
-const storageGet = promisify(storage.get);
+const storageSet = browser.storage.local.set;
+const storageGet = browser.storage.local.get;
 
 class Storage {
     constructor() {
