@@ -1,5 +1,5 @@
-import React, { Component } from 'React';
-import { getBackgroundPage } from '../../lib/tabsApiWrapper';
+import React, { Component } from 'react';
+import { getBackgroundPage } from '../../lib/TabsApiWrapper';
 
 import './SettingsPopup.scss';
 

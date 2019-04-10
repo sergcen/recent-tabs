@@ -1,6 +1,6 @@
-import TabsStorage from './lib/TabsStorage';
-import SettingsStorage from './lib/Storage';
-import { selectTab, moveTab } from './lib/tabsApiWrapper';
+import TabsStorage from '../lib/TabsStorage';
+import SettingsStorage from '../lib/Storage';
+import { selectTab, moveTab } from '../lib/TabsApiWrapper';
 
 const tabsStorage = new TabsStorage();
 const settingsStorage = new SettingsStorage();
@@ -81,21 +81,21 @@ const sortTabs = async () => {
     }
 };
 
-chrome.tabs.onActivated.addListener(info => {
+browser.tabs.onActivated.addListener(info => {
     tabsStorage.addTab(info.tabId);
     sortTabsWithTimeout();
 });
 
 let lastCreated = new Set();
 
-chrome.tabs.onUpdated.addListener((id, { status }) => {
+browser.tabs.onUpdated.addListener((id, { status }) => {
     if (lastCreated.has(id) && status === 'complete') {
         noDublicate(id);
         lastCreated.delete(id);
     }
 });
 
-chrome.tabs.onCreated.addListener(tab => {
+browser.tabs.onCreated.addListener(tab => {
     tabsStorage.addTab(tab.id);
 
     cleanTabs();

@@ -4,9 +4,9 @@ import {
     getTabsFromHistory,
     removeTab,
     removeTabs
-} from './tabsApiWrapper';
+} from './TabsApiWrapper';
 
-import filterTabs from './filterTabs';
+import filterTabs from './FilterTabs';
 
 const SEARCH_IN_HISTORY_TIMEOUT = 300;
 const COUNT_HISTORY_RESULT_IN_CACHE = 1000;

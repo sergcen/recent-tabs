@@ -1,22 +1,25 @@
 {
   "manifest_version": 2,
-
-  "name": "Recent-tabs",
-  "description": "Very fast switching tabs",
+  "name": "__MSG_appName__",
+  "short_name": "__MSG_appShortName__",
+  "description": "__MSG_appDescription__",
   "version": "1.1",
-
+  "default_locale": "en",
   "icons": {
-    "16": "icon-16.png",
-    "128": "icon-128.png"
+    "16": "icons/icon-16.png",
+    "128": "icons/icon-128.png"
   },
 
   "browser_action": {
-    "default_icon": {},
-    "default_title": "tabs-popup",
-    "default_popup": "popup.html"
+    "default_icon": {
+      "19": "icons/icon-19.png",
+      "38": "icons/icon-38.png"
+    },
+    "default_title": "__MSG_browserActionTitle__",
+    "default_popup": "pages/popup.html"
   },
   "options_ui": {
-    "page": "settings.html",
+    "page": "pages/settings.html",
     "open_in_tab": false
   },
   "commands": {
@@ -31,7 +34,7 @@
   },
   "background": {
     "scripts": [
-      "background.js"
+      "scripts/background.js"
     ]
   },
 
