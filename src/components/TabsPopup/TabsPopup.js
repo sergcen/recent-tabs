@@ -227,7 +227,7 @@ class TabsPopup extends Component {
                 onChangeActiveItem={updateScrollFn}
             />
             <TabsList
-                header={showHistoryHeader && 'История'}
+                header={showHistoryHeader && 'History'}
                 tabs={tabsHistory}
                 selectedTab={selectedTab}
                 onSelect={tab => this.submitSelectTab(tab)}
