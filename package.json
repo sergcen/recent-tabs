@@ -1,6 +1,6 @@
 {
   "name": "recent-tabs",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Fast switch between tabs",
   "repository": {
     "type": "git",
@@ -22,6 +22,8 @@
   "scripts": {
     "dev": "webextension-toolbox --src src dev",
     "build": "webextension-toolbox --src src build",
+    "build:chrome": "npm run build chrome",
+    "build:firefox": "npm run build firefox",
     "test": "jest"
   },
   "devDependencies": {
