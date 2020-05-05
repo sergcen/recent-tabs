@@ -7,6 +7,17 @@ export const moveBrowserTab = browser.tabs.move;
 
 export const getActiveTabIndex = tabs => tabs.findIndex(tab => tab.active);
 
+export const moveTabsToNewWindows = async (tabsToMove) => {
+    const ids = tabsToMove.map(t => t.id);
+    try {
+        browser.windows.create({ tabId: ids[0], state: 'maximized' }).then(newWindow => {
+            return browser.tabs.move(ids.slice(1), { windowId: newWindow.id, index: -1 });
+        })
+    } catch(e) {
+        throw Error(JSON.stringify(e));
+    }
+}
+
 export const selectTab = ({ windowId, id }) => {
     browser.windows.update(windowId, { focused: true });
     browser.tabs.update(id, { active: true });

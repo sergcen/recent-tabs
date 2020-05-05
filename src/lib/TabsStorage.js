@@ -3,7 +3,7 @@ import {
     getBrowserTabs,
     getTabsFromHistory,
     removeTab,
-    removeTabs
+    removeTabs,
 } from './TabsApiWrapper';
 
 import filterTabs from './FilterTabs';
@@ -11,6 +11,9 @@ import filterTabs from './FilterTabs';
 const SEARCH_IN_HISTORY_TIMEOUT = 300;
 const COUNT_HISTORY_RESULT_IN_CACHE = 1000;
 const HISTORY_APPEND_LIMIT = 15;
+// need some extra count for query from history
+// clearDuplicates can removes some history items
+const DUBLICATES_OVERHEAD_COUNT = 10;
 
 class TabsStorage {
     constructor() {
@@ -21,6 +24,7 @@ class TabsStorage {
         this.tabs = [];
         this.history = [];
         this.lastHistory = [];
+        this.bookmarks = [];
 
         this.updateHistory();
     }
@@ -29,13 +33,13 @@ class TabsStorage {
         if (!fromCache || this.tabs.length === 0) {
             this.tabs = await getBrowserTabs({ currentWindow: true });
 
-            this.tabs.forEach(tab => {
+            this.tabs.forEach((tab, index) => {
                 tab.url = decodeURI(tab.url);
             });
 
             if (excludeTabsIds) {
                 this.tabs = this.tabs.filter(
-                    t => !excludeTabsIds.includes(t.id)
+                    (t) => !excludeTabsIds.includes(t.id)
                 );
             }
         }
@@ -44,54 +48,40 @@ class TabsStorage {
     }
 
     async get(query, fromCache = true, excludeTabsIds) {
-        await this.historyLoading;
-
         const tabs = await this.getTabs(fromCache, excludeTabsIds);
 
         let filteredTabs = filterTabs(tabs, query);
 
-        let history = null;
-        let refinedHistory = null;
-
-        if (filteredTabs.length < HISTORY_APPEND_LIMIT) {
-            const historyTabs = this.lastHistory.concat(this.history);
-            history = filterTabs(historyTabs, query, HISTORY_APPEND_LIMIT);
-            history = this.clearDublicatesTabs(history, filteredTabs);
-        }
-
-        const totalCount =
-            filteredTabs.length + ((history && history.length) || 0);
-
-        if (totalCount < HISTORY_APPEND_LIMIT) {
-            // we need some extra count for query from history
-            // clearDuplicates can removes some history items
-            const dublicatesOverheadCount = 10;
-            const searchCount =
-                HISTORY_APPEND_LIMIT - totalCount + dublicatesOverheadCount;
-
-            refinedHistory = this.getTabsFromHistory(query, searchCount);
-
-            refinedHistory.promise = refinedHistory.promise.then(
-                refinedTabs => {
-                    if (refinedTabs && refinedTabs.length) {
-                        refinedTabs = this.clearDublicatesTabs(
-                            refinedTabs,
-                            filteredTabs.concat(history)
-                        );
-                    }
-                    return history.concat(refinedTabs);
-                }
-            );
-        }
-
         const lruTabs = this.sortTabsByLastUsage(filteredTabs);
 
+        return lruTabs;
+    }
+
+    async getHistory(query, count = HISTORY_APPEND_LIMIT) {
+        if (this.historyLoading) {
+            await this.historyLoading;
+        }
+
+        if (this.lastRefinedHistory) {
+            this.lastRefinedHistory.cancel();
+        }
+
+        let refinedHistory = null;
+
+        const historyTabs = this.lastHistory.concat(this.history);
+
+        let history = filterTabs(historyTabs, query, HISTORY_APPEND_LIMIT);
+
+        if (history.length < HISTORY_APPEND_LIMIT) {
+            refinedHistory = this.getTabsFromHistory(query, DUBLICATES_OVERHEAD_COUNT + count);
+        }
+
+        this.lastRefinedHistory = refinedHistory;
+
         return {
-            tabs: lruTabs,
             history,
-            totalCount,
             refinedHistory
-        };
+        }
     }
 
     sortTabsByLastUsage(tabs, reverse = false) {
@@ -122,27 +112,32 @@ class TabsStorage {
                 clearTimeout(timeout);
                 reject();
             },
-            promise
+            promise,
         };
+    }
+
+    getBookmarks() {
+        return browser.bookmarks.getTree();
     }
 
     addTab(tabId) {
         this.tabsUsageMap.set(tabId, Date.now());
 
-        this.lastHistory = this.lastHistory.filter(t => t.id !== tabId);
-        // this.lastHistory.unshift(tab);
+        this.lastHistory = this.lastHistory.filter((t) => t.id !== tabId);
     }
 
-    updateHistory() {
+    async updateHistory() {
         this.historyLoading = getTabsFromHistory(
             '',
             COUNT_HISTORY_RESULT_IN_CACHE,
             2
-        ).then(items => {
-            this.history = items;
-            this.lastHistory = [];
-            this.lastHistorySet.clear();
-        });
+        );
+
+        const items = await this.historyLoading;
+
+        this.history = items;
+        this.lastHistory = [];
+        this.lastHistorySet.clear();
     }
 
     removeTab(id) {
@@ -152,15 +147,15 @@ class TabsStorage {
     }
 
     removeTabs(ids) {
-        ids.forEach(id => this.tabsUsageMap.delete(id));
+        ids.forEach((id) => this.tabsUsageMap.delete(id));
 
         return removeTabs(ids);
     }
 
     clearDublicatesTabs(tabs, existsTabs) {
-        const existsUrls = new Set(existsTabs.map(t => t.url));
+        const existsUrls = new Set(existsTabs.map((t) => t.url));
 
-        return tabs.filter(t => !existsUrls.has(t.url));
+        return tabs.filter((t) => !existsUrls.has(t.url));
     }
 }
 

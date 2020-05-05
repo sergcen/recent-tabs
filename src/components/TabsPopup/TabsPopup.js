@@ -1,242 +1,203 @@
-import React, { Component } from 'react';
+import React, {
+    useEffect,
+    useCallback,
+    useRef,
+    useState,
+    useMemo,
+} from 'react';
 import TabsList from '../TabsList';
 
 import throttle from 'lodash.throttle';
 import Hotkeys from '../../lib/Hotkeys';
-import "../../polyfills/scrollIntoViewIfNeeded";
+import '../../polyfills/scrollIntoViewIfNeeded';
+
+import { useTabs } from '../../hooks/tabs';
 
 import {
     createTab,
+    isTab,
+    moveTabsToNewWindows,
     selectTab,
-    getBackgroundPage,
-    isTab
 } from '../../lib/TabsApiWrapper';
 
 import './TabsPopup.scss';
+import { useHistory } from '../../hooks/history';
+import { useSelectedTab } from '../../hooks/selectedTab';
+import { clearDublicates } from '../../lib/utils';
+import { useSettings } from '../../hooks/getBackgroundPage';
+import { useBookmarks } from '../../hooks/bookmarks';
 
-const updateScrollFn = throttle(elem => elem.scrollIntoViewIfNeeded(), 100);
+const TabsPopup = () => {
+    const [query, setQuery] = useState('');
+    const [bookmarkId, setBookmarkId] = useState(null);
 
-let bgWindow;
+    const [tabs = [], removeTabs] = useTabs(query);
+    const { history = [], loading: historyLoading } = useHistory(query);
+    const bookmarks = useBookmarks(query, bookmarkId);
 
-class TabsPopup extends Component {
-    state = {
-        tabs: [],
-        tabsHistory: [],
-        tabsHistorySearch: false,
-        selectedTab: null
-    };
-    text = '';
-    haveRemovedTabs = false;
+    const showShortcuts = useSettings('showShortcuts');
 
-    input = null;
+    const [filteredTabs, filteredBookmarks, filteredHistory] = clearDublicates(
+        tabs,
+        bookmarks,
+        history
+    );
 
-    componentDidMount() {
-        getBackgroundPage().then(async (bg) => {
-            bgWindow = bg;
-            await this.queryTabs({ fromCache: false });
-            this.selectTab(1);
-        });
+    const collections = useMemo(
+        () => [tabs, filteredBookmarks, filteredHistory],
+        [tabs, bookmarks, history]
+    );
 
-        if (this.input) {
-            this.copyToClipboardHandler(this.input);
-            this.input.focus();
+    const startTabIndex = query ? 0 : 1;
+    const [selectedTab, selectedTabIndex, setSelectedTab] = useSelectedTab(
+        startTabIndex,
+        collections
+    );
+
+    const inputRef = useRef(null);
+
+    useEffect(() => {
+        if (inputRef) {
+            inputRef.current.focus();
         }
-    }
+    }, []);
 
-    async queryTabs({ queryText, fromCache, exclude }) {
-        if (this.refinedHistoryQuery) {
-            this.refinedHistoryQuery.cancel();
-            this.refinedHistoryQuery = null;
-        }
+    useEffect(() => {
+        const listener = (command) => {
+            if (command === 'move-tabs-new-window') {
+                moveTabsToNewWindows(tabs);
+            }
+        };
 
-        const {
-            tabs,
-            history,
-            refinedHistory
-        } = await bgWindow.tabsStorage.get(queryText, fromCache, exclude);
+        browser.commands.onCommand.addListener(listener);
 
-        this.setState({
-            text: queryText,
-            tabs,
-            tabsHistory: history,
-            tabsHistorySearch: Boolean(refinedHistory)
-        });
+        return () => {
+            browser.commands.onCommand.removeListener(listener);
+        };
+    }, [tabs]);
 
-        if (refinedHistory) {
-            this.refinedHistoryQuery = refinedHistory;
-
-            refinedHistory.promise.then(refinedHistory =>
-                this.setState({
-                    tabsHistory: refinedHistory,
-                    tabsHistorySearch: false
-                })
-            );
-        }
-    }
-
-    copyToClipboardHandler(input) {
-        input.addEventListener('copy', e => {
-            if (e.target !== input) return;
+    const copyHandler = useCallback(
+        (e) => {
+            if (e.target !== inputRef.current) return;
 
             e.clipboardData.setData(
                 'text/plain',
-                this.state.selectedTab && this.state.selectedTab.url
+                selectedTab && selectedTab.url
             );
 
             e.preventDefault();
-        });
-    }
+        },
+        [selectedTab]
+    );
 
-    async updateTabsList(text) {
-        this.text = text;
-        await this.queryTabs({ queryText: text, fromCache: !this.haveRemovedTabs });
-        this.selectTab(0);
-    }
-
-    getSelectedTab() {
-        const { selectedTab } = this.state;
-
-        return selectedTab;
-    }
-
-    onKeyHandler(e) {
-        Hotkeys(e, {
-            'shift+ArrowDown': () => {
-                const tabsToRemove = this.state.tabs.slice(
-                    this.getCurrentTabIndex()
+    const removeTabsHandler = useCallback(
+        (tabsToRemove) => {
+            if (tabsToRemove.length > 1) {
+                // skip tabs with audio and pinned
+                tabsToRemove = tabsToRemove.filter(
+                    (tab) => !(tab.audible || tab.pinned)
                 );
+            }
 
-                this.removeTabs(tabsToRemove);
-            },
-            'shift+ArrowRight': () => this.removeTab(this.getSelectedTab()),
-            ArrowDown: () => this.incSelectedTabIndex(1),
-            ArrowUp: () => this.incSelectedTabIndex(-1),
-            Enter: () => this.submitSelectTab(this.getSelectedTab())
-        });
-    }
+            removeTabs(tabsToRemove);
+        },
+        [removeTabs]
+    );
 
-    getAllTabsCount() {
-        return (
-            this.state.tabs.length +
-            (this.state.tabsHistory ? this.state.tabsHistory.length : 0)
-        );
-    }
+    const keyDownHandler = useCallback(
+        (e) => {
+            Hotkeys(e, {
+                'shift+ArrowDown': () => {
+                    if (selectedTabIndex > tabs.length - 1) return;
 
-    getTabByIndex(index) {
-        return index < this.state.tabs.length
-            ? this.state.tabs[index]
-            : this.state.tabsHistory[index - this.state.tabs.length];
-    }
+                    const tabsToRemove = tabs.slice(selectedTabIndex);
 
-    getCurrentTabIndex() {
-        const selectedTab = this.getSelectedTab();
+                    removeTabsHandler(tabsToRemove);
+                },
+                'shift+ArrowRight': () => removeTabs([selectedTab]),
+                ArrowDown: () => setSelectedTab('+1'),
+                ArrowUp: () => setSelectedTab('-1'),
+                Enter: () => submitSelectTab(selectedTab),
+            });
+        },
+        [selectedTab, removeTabs, removeTabsHandler, setSelectedTab]
+    );
 
-        return this.getTabIndex(selectedTab);
-    }
+    const submitSelectTab = useCallback(
+        (tab) => {
+            if (filteredBookmarks.includes(tab)) {
+                tab.url ?
+                    createTab(tab) :
+                    setBookmarkId(tab.id);
+                return;
+            }
 
-    getTabIndex(tab) {
-        const { tabs, tabsHistory } = this.state;
-        const tabIndex = tabs.findIndex(t => t.id === tab.id);
+            if (isTab(tab)) {
+                selectTab(tab);
+            } else {
+                createTab(tab);
+            }
 
-        return tabIndex !== -1
-            ? tabIndex
-            : tabsHistory.findIndex(t => t.id === tab.id) + tabs.length;
-    }
+            window.close();
+        },
+        [filteredBookmarks]
+    );
 
-    incSelectedTabIndex(n) {
-        this.selectTab(this.getCurrentTabIndex() + n);
-    }
+    const textChangeHandler = useCallback(
+        (e) => {
+            setQuery(e.target.value);
+            setSelectedTab(e.target.value ? 0 : 1, true);
+            setBookmarkId(null);
+        },
+        [setQuery, setSelectedTab]
+    );
 
-    selectTab(tabIndex = 0) {
-        if (tabIndex >= this.getAllTabsCount()) return;
-        if (tabIndex < 0) tabIndex = 0;
-
-        let selectedTab = this.getTabByIndex(tabIndex);
-
-        // if (selectedTab.active) {
-        //     selectedTab = this.getTabByIndex(tabIndex + 1);
-        // }
-
-        this.setState({ selectedTab });
-    }
-
-    async removeTabs(tabsToRemove) {
-        // skip tabs with audio and pinned
-        tabsToRemove = tabsToRemove.filter(tab => !(tab.audible || tab.pinned));
-
-        const idsToRemove = tabsToRemove.map(t => t.id);
-
-        if (idsToRemove.length === 0) return;
-
-        this.incSelectedTabIndex(-1);
-
-        await bgWindow.tabsStorage.removeTabs(idsToRemove);
-
-        await this.queryTabs({
-            queryText: this.text,
-            fromCache: false,
-            exclude: idsToRemove
-        });
-    }
-
-    async removeTab(tab) {
-        const { tabs } = this.state;
-
-        const tabIndex = this.getTabIndex(tab);
-
-        if (tabIndex === -1 || tabIndex >= tabs.length) return;
-
-        const isLastTab = tabIndex === tabs.length - 1;
-        this.incSelectedTabIndex(isLastTab ? -1 : 1);
-
-        await bgWindow.tabsStorage.removeTab(tab.id);
-
-        await this.queryTabs({
-            queryText: this.text,
-            fromCache: false,
-            exclude: [tab.id]
-        });
-    }
-
-    submitSelectTab(tab) {
-        // if selected tab from history
-        isTab(tab) ? selectTab(tab) : createTab(tab);
-        window.close();
-    }
-
-    render() {
-        const { tabs, tabsHistory } = this.state;
-        const selectedTab = this.getSelectedTab();
-        const showHistoryHeader =
-            this.state.tabsHistorySearch ||
-            (tabsHistory && tabsHistory.length > 0);
-
-        return (
-        <React.Fragment>
+    return (
+        <div className="TabsPopup">
             <input
-                ref={input => (this.input = input)}
+                ref={inputRef}
                 type="text"
                 className="filterInput"
-                onKeyDown={e => this.onKeyHandler(e)}
-                onChange={e => this.updateTabsList(e.target.value)}
+                onKeyDown={keyDownHandler}
+                onChange={textChangeHandler}
+                onCopy={copyHandler}
             />
+            {showShortcuts && (
+                <div className="TabsPopup-Keymap">
+                    <span>
+                        <b>Shift + &rarr;</b> close
+                    </span>
+                    <span>
+                        <b>Shift + &darr;</b> close and all below
+                    </span>
+                    <span>
+                        <b>Ctrl + C</b> copy url
+                    </span>
+                    <span>
+                        <b>Alt + N</b> move to new window
+                    </span>
+                </div>
+            )}
             <TabsList
                 tabs={tabs}
                 selectedTab={selectedTab}
-                onSelect={tab => this.submitSelectTab(tab)}
-                onChangeActiveItem={updateScrollFn}
+                onSelect={submitSelectTab}
             />
             <TabsList
-                header={showHistoryHeader && 'History'}
-                tabs={tabsHistory}
+                header="Bookmarks"
+                tabs={filteredBookmarks}
                 selectedTab={selectedTab}
-                onSelect={tab => this.submitSelectTab(tab)}
-                isLoading={this.state.tabsHistorySearch}
-                onChangeActiveItem={updateScrollFn}
+                onSelect={submitSelectTab}
             />
-        </React.Fragment>
-        );
-    }
-}
+            <TabsList
+                header="History"
+                tabs={filteredHistory}
+                selectedTab={selectedTab}
+                onSelect={submitSelectTab}
+                isLoading={historyLoading}
+            />
+        </div>
+    );
+};
 
 export default TabsPopup;

@@ -1,6 +1,10 @@
 import TabsStorage from '../lib/TabsStorage';
 import SettingsStorage from '../lib/Storage';
-import { selectTab, moveTab } from '../lib/TabsApiWrapper';
+import {
+    selectTab,
+    moveTab,
+    moveTabsToNewWindows,
+} from '../lib/TabsApiWrapper';
 
 const tabsStorage = new TabsStorage();
 const settingsStorage = new SettingsStorage();
@@ -19,21 +23,21 @@ const cleanTabs = async () => {
         const ids = tabsStorage
             .sortTabsByLastUsage(tabs)
             .slice(diffCount)
-            .filter(tab => !tab.audible && !tab.pinned)
-            .map(t => t.id);
+            .filter((tab) => !tab.audible && !tab.pinned)
+            .map((t) => t.id);
 
-        ids.forEach(id => tabsStorage.removeTab(id));
+        ids.forEach((id) => tabsStorage.removeTab(id));
     }
 };
 
-const noDublicate = async tabId => {
+const noDublicate = async (tabId) => {
     const { nodublicate, nodublicateCloseOlder } = settingsStorage;
 
     if (!nodublicate) return;
 
     const tabs = await tabsStorage.getTabs();
-    const tab = tabs.find(t => t.id === tabId);
-    const existsTab = tabs.find(t => t.id !== tab.id && t.url === tab.url);
+    const tab = tabs.find((t) => t.id === tabId);
+    const existsTab = tabs.find((t) => t.id !== tab.id && t.url === tab.url);
 
     if (!existsTab) return;
 
@@ -71,17 +75,17 @@ const sortTabs = async () => {
             return {
                 id: tab.id,
                 sortedIndex: index,
-                browserIndex: tabsMap.get(tab.id)
+                browserIndex: tabsMap.get(tab.id),
             };
         })
-        .filter(t => t.sortedIndex !== t.browserIndex);
+        .filter((t) => t.sortedIndex !== t.browserIndex);
 
     for (const pos of positions) {
         await moveTab(pos.id, { index: pos.sortedIndex });
     }
 };
 
-browser.tabs.onActivated.addListener(info => {
+browser.tabs.onActivated.addListener((info) => {
     tabsStorage.addTab(info.tabId);
     sortTabsWithTimeout();
 });
@@ -95,11 +99,17 @@ browser.tabs.onUpdated.addListener((id, { status }) => {
     }
 });
 
-browser.tabs.onCreated.addListener(tab => {
+browser.tabs.onCreated.addListener((tab) => {
     tabsStorage.addTab(tab.id);
 
     cleanTabs();
     lastCreated.add(tab.id);
+});
+
+browser.runtime.onInstalled.addListener(function (details) {
+    if (details.reason == 'install') {
+        chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
+    }
 });
 
 window.tabsStorage = tabsStorage;

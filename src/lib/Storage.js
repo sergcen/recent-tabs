@@ -49,6 +49,10 @@ class Storage {
     get sortingTimeout() {
         return this.storage.sortingTimeout || 500;
     }
+
+    get showShortcuts() {
+        return this.storage.showShortcuts === false ? false : true;
+    }
 }
 
 export default Storage;

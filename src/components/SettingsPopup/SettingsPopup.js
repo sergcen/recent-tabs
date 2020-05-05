@@ -28,8 +28,7 @@ class SettingsPopup extends Component {
     }
 
     option(label, propName, type, placeholder) {
-        const { state } = this;
-        const value = state[propName];
+        const value = this.storage && this.storage[propName];
         const handleChange = e => this.handleChange(e);
 
         let control;
@@ -140,6 +139,14 @@ class SettingsPopup extends Component {
                             'github/**'
                         )
                     ]}
+                </div>
+                <div className="settings-popup__group">
+                    <h3>Show shortcuts help</h3>
+                    {this.option(
+                        'Enabled',
+                        'showShortcuts',
+                        'checkbox'
+                    )}
                 </div>
             </form>
         );

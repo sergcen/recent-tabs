@@ -36,6 +36,8 @@ export default function filterTabs(tabs, query, limit) {
 }
 
 const findSubstr = (text, first, second) => {
+    if (!text) return false;
+
     text = text.toLowerCase();
 
     return text.includes(first) || text.includes(second);

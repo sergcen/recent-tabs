@@ -1,6 +1,8 @@
 const checkKey = (e, key) => {
     if (key === 'shift' && e.shiftKey) return true;
     if (key === 'cmd' && e.metaKey) return true;
+    if (key === 'CTRL' && e.ctrlKey) return true;
+    if (key === 'ALT' && e.altKey) return true;
 
     return e.key === key;
 };
@@ -18,7 +20,9 @@ const Hotkeys = (event, actions) => {
         }
     });
 
-    hasAction && event.preventDefault();
+    if (hasAction) {
+        event.preventDefault();
+    }
 };
 
 export default Hotkeys;
