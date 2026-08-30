@@ -26,3 +26,65 @@
         vertical-align: middle;
     }
 }
+
+.domain-search-shortcuts {
+    &__description,
+    &__empty,
+    &__hint {
+        line-height: 1.4;
+    }
+
+    &__empty,
+    &__card {
+        padding: 10px;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+        background: #fafafa;
+    }
+
+    &__card {
+        margin-bottom: 10px;
+
+        label,
+        input,
+        textarea {
+            display: block;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        input,
+        textarea {
+            margin-top: 4px;
+        }
+
+        textarea {
+            min-height: 70px;
+            resize: vertical;
+        }
+    }
+
+    &__hint {
+        margin: 8px 0;
+        color: #555;
+    }
+
+    &__error {
+        margin: 4px 0 8px;
+        color: #b00020;
+    }
+
+    &__delete {
+        color: #b00020;
+    }
+
+    &__actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    &__save-state {
+        color: #555;
+    }
+}

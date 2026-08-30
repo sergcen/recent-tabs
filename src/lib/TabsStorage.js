@@ -3,12 +3,15 @@ import { RECENT_TABS_STATE_KEY } from './constants';
 
 import {
     getBrowserTabs,
-    getTabsFromHistory,
+    getTabsFromHistory as searchBrowserHistory,
     removeTab,
     removeTabs,
 } from './TabsApiWrapper';
 
-import filterTabs from './FilterTabs';
+import {
+    filterItemsBySearch,
+    normalizeSearchDescriptor,
+} from './DomainSearchShortcuts';
 
 const SEARCH_IN_HISTORY_TIMEOUT = 300;
 const COUNT_HISTORY_RESULT_IN_CACHE = 1000;
@@ -65,17 +68,17 @@ class TabsStorage {
         return this.tabs;
     }
 
-    async get(query, fromCache = true, excludeTabsIds) {
+    async get(search, fromCache = true, excludeTabsIds) {
         const tabs = await this.getTabs(fromCache, excludeTabsIds);
 
-        let filteredTabs = filterTabs(tabs, query);
+        const filteredTabs = filterItemsBySearch(tabs, search);
 
         const lruTabs = this.sortTabsByLastUsage(filteredTabs);
 
         return lruTabs;
     }
 
-    async getHistory(query, count = HISTORY_APPEND_LIMIT) {
+    async getHistory(search, count = HISTORY_APPEND_LIMIT) {
         if (this.historyLoading) {
             await this.historyLoading;
         }
@@ -88,11 +91,15 @@ class TabsStorage {
 
         const historyTabs = this.lastHistory.concat(this.history);
 
-        let history = filterTabs(historyTabs, query, HISTORY_APPEND_LIMIT);
+        const history = filterItemsBySearch(
+            historyTabs,
+            search,
+            HISTORY_APPEND_LIMIT,
+        );
 
         if (history.length < HISTORY_APPEND_LIMIT) {
             refinedHistory = this.getTabsFromHistory(
-                query,
+                search,
                 DUBLICATES_OVERHEAD_COUNT + count,
             );
         }
@@ -116,7 +123,7 @@ class TabsStorage {
         return reverse ? tabs.reverse() : tabs;
     }
 
-    getTabsFromHistory(query, count) {
+    getTabsFromHistory(search, count) {
         let timeout = null;
         let reject = null;
 
@@ -124,7 +131,7 @@ class TabsStorage {
             reject = rej;
 
             timeout = setTimeout(() => {
-                resolve(getTabsFromHistory(query, count, 1000));
+                resolve(this.searchHistory(search, count));
             }, SEARCH_IN_HISTORY_TIMEOUT);
         });
 
@@ -135,6 +142,40 @@ class TabsStorage {
             },
             promise,
         };
+    }
+
+    async searchHistory(search, count) {
+        const descriptor = normalizeSearchDescriptor(search);
+
+        if (!descriptor.shortcut) {
+            return searchBrowserHistory(descriptor.text, count, 1000);
+        }
+
+        const searchTerms = [
+            descriptor.text,
+            ...descriptor.shortcut.patterns,
+        ].filter(Boolean);
+        const historyCollections = await Promise.all(
+            [...new Set(searchTerms)].map((term) =>
+                searchBrowserHistory(term, count, 1000),
+            ),
+        );
+        const seenUrls = new Set();
+        const candidates = historyCollections
+            .flat()
+            .sort(
+                (a, b) =>
+                    (b.lastVisitTime || 0) - (a.lastVisitTime || 0),
+            )
+            .filter((item) => {
+                const key = item.url || item.id;
+                if (seenUrls.has(key)) return false;
+
+                seenUrls.add(key);
+                return true;
+            });
+
+        return filterItemsBySearch(candidates, descriptor, count);
     }
 
     getBookmarks() {
@@ -148,7 +189,7 @@ class TabsStorage {
     }
 
     async updateHistory() {
-        this.historyLoading = getTabsFromHistory(
+        this.historyLoading = searchBrowserHistory(
             '',
             COUNT_HISTORY_RESULT_IN_CACHE,
             2,

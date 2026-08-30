@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import SettingsStorage from '../../lib/Storage';
+import DomainSearchShortcutsSettings from './DomainSearchShortcutsSettings';
 
 import './SettingsPopup.scss';
 
@@ -24,6 +25,9 @@ class SettingsPopup extends Component {
         this.storage.set(name, value);
         this.setState({ [name]: value });
     }
+
+    saveDomainSearchShortcuts = (shortcuts) =>
+        this.storage.set('domainSearchShortcuts', shortcuts);
 
     option(label, propName, type, placeholder) {
         const value = this.storage && this.storage[propName];
@@ -81,7 +85,7 @@ class SettingsPopup extends Component {
         const { sorting, autoclose, nodublicate } = this.state;
 
         return (
-            <form className="settings-popup">
+            <form className="settings-popup" onSubmit={(e) => e.preventDefault()}>
                 <div className="settings-popup__group">
                     <h3>Autoclosing tabs</h3>
                     {this.option('Enabled', 'autoclose', 'checkbox')}
@@ -142,6 +146,12 @@ class SettingsPopup extends Component {
                     <h3>Show shortcuts help</h3>
                     {this.option('Enabled', 'showShortcuts', 'checkbox')}
                 </div>
+                {this.storage && (
+                    <DomainSearchShortcutsSettings
+                        shortcuts={this.storage.domainSearchShortcuts}
+                        onSave={this.saveDomainSearchShortcuts}
+                    />
+                )}
             </form>
         );
     }

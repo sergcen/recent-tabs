@@ -4,6 +4,19 @@ Fast switch between tabs, see [chrome web store](https://chrome.google.com/webst
 features:
 * show all opened tabs in popup, sorted by last usage
 * 2-step search in browser history
+* limit tab, bookmark, and history search to configured URL scopes
+
+## Domain search shortcuts
+
+Open the extension settings and add a shortcut key with one or more URL
+patterns. For example, configure the key `gh` with the pattern `github.com`,
+then type `gh issue` in the popup. Only matching tabs, bookmarks, and history
+entries are searched. Type `gh` without a query to see
+all currently available results in that scope.
+
+Patterns are case-insensitive substrings of the URL hostname and path. Multiple
+patterns under the same key are combined with OR. Shortcuts are stored locally
+in the current browser profile.
 
 Browsers: Chrome, Yandex Browser, Firefox
 
