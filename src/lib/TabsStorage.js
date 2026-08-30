@@ -1,5 +1,7 @@
+import browser from 'webextension-polyfill';
+import { RECENT_TABS_STATE_KEY } from './constants';
+
 import {
-    searchInHistory,
     getBrowserTabs,
     getTabsFromHistory,
     removeTab,
@@ -26,10 +28,26 @@ class TabsStorage {
         this.lastHistory = [];
         this.bookmarks = [];
 
+        this.ready = this.loadTabsUsage();
         this.updateHistory();
     }
 
+    async loadTabsUsage() {
+        const result = await browser.storage.local.get(RECENT_TABS_STATE_KEY);
+        const state = result[RECENT_TABS_STATE_KEY] || {};
+        const usage = state.tabsUsage || {};
+
+        this.tabsUsageMap = new Map(
+            Object.entries(usage).map(([tabId, lastUsed]) => [
+                Number(tabId),
+                lastUsed,
+            ]),
+        );
+    }
+
     async getTabs(fromCache, excludeTabsIds) {
+        await this.ready;
+
         if (!fromCache || this.tabs.length === 0) {
             this.tabs = await getBrowserTabs({ currentWindow: true });
 
@@ -39,7 +57,7 @@ class TabsStorage {
 
             if (excludeTabsIds) {
                 this.tabs = this.tabs.filter(
-                    (t) => !excludeTabsIds.includes(t.id)
+                    (t) => !excludeTabsIds.includes(t.id),
                 );
             }
         }
@@ -73,15 +91,18 @@ class TabsStorage {
         let history = filterTabs(historyTabs, query, HISTORY_APPEND_LIMIT);
 
         if (history.length < HISTORY_APPEND_LIMIT) {
-            refinedHistory = this.getTabsFromHistory(query, DUBLICATES_OVERHEAD_COUNT + count);
+            refinedHistory = this.getTabsFromHistory(
+                query,
+                DUBLICATES_OVERHEAD_COUNT + count,
+            );
         }
 
         this.lastRefinedHistory = refinedHistory;
 
         return {
             history,
-            refinedHistory
-        }
+            refinedHistory,
+        };
     }
 
     sortTabsByLastUsage(tabs, reverse = false) {
@@ -130,7 +151,7 @@ class TabsStorage {
         this.historyLoading = getTabsFromHistory(
             '',
             COUNT_HISTORY_RESULT_IN_CACHE,
-            2
+            2,
         );
 
         const items = await this.historyLoading;

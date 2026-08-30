@@ -1,6 +1,6 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 
 import SettingsPopup from '../components/SettingsPopup';
 
-ReactDOM.render(<SettingsPopup />, document.getElementById('root'));
+createRoot(document.getElementById('root')).render(<SettingsPopup />);

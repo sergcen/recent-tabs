@@ -5,7 +5,20 @@ features:
 * show all opened tabs in popup, sorted by last usage
 * 2-step search in browser history
 
-Browsers: Chrome, YandexBrowser
+Browsers: Chrome, Yandex Browser, Firefox
+
+The extension uses Manifest V3.
+
+## Build
+
+```sh
+npm install
+npm run build:chrome
+npm run build:firefox
+```
+
+Node.js 22.11 through 25 is supported. The Chrome Web Store ZIP and Firefox
+XPI archives are created in `packages/`.
 
 ## Hotkeys
 * CMD + E - open popup (default for MAC, for Windows users set it manually: `chrome://extensions/shortcuts`)

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import browser from 'webextension-polyfill';
 
 import filterTabs from '../lib/FilterTabs';
 
@@ -20,15 +21,13 @@ export function useBookmarks(query = '', bookmarkId = null, limit = 5) {
     const [allBookmarks, setAllBookmarks] = useState(null);
 
     useEffect(() => {
-        browser.bookmarks
-            .getTree()
-            .then((allBookmarks) => {
-                if (allBookmarks.length > 0) {
-                    const flattenBookmarks = flatBookmarks(allBookmarks[0]);
+        browser.bookmarks.getTree().then((allBookmarks) => {
+            if (allBookmarks.length > 0) {
+                const flattenBookmarks = flatBookmarks(allBookmarks[0]);
 
-                    setAllBookmarks(flattenBookmarks.filter(b => b.title))
-                }
-            });
+                setAllBookmarks(flattenBookmarks.filter((b) => b.title));
+            }
+        });
     }, []);
 
     useEffect(() => {

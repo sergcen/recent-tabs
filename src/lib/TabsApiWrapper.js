@@ -1,22 +1,34 @@
+import browser from 'webextension-polyfill';
+
 const searchInHistory = browser.history.search;
 const removeBrowserTab = browser.tabs.remove;
 
 export const getBrowserTabs = browser.tabs.query;
-export const getBackgroundPage = browser.runtime.getBackgroundPage;
 export const moveBrowserTab = browser.tabs.move;
 
-export const getActiveTabIndex = tabs => tabs.findIndex(tab => tab.active);
+export const getActiveTabIndex = (tabs) => tabs.findIndex((tab) => tab.active);
 
 export const moveTabsToNewWindows = async (tabsToMove) => {
-    const ids = tabsToMove.map(t => t.id);
+    const ids = tabsToMove.map((t) => t.id);
+
+    if (ids.length === 0) return;
+
     try {
-        browser.windows.create({ tabId: ids[0], state: 'maximized' }).then(newWindow => {
-            return browser.tabs.move(ids.slice(1), { windowId: newWindow.id, index: -1 });
-        })
-    } catch(e) {
+        const newWindow = await browser.windows.create({
+            tabId: ids[0],
+            state: 'maximized',
+        });
+
+        if (ids.length > 1) {
+            await browser.tabs.move(ids.slice(1), {
+                windowId: newWindow.id,
+                index: -1,
+            });
+        }
+    } catch (e) {
         throw Error(JSON.stringify(e));
     }
-}
+};
 
 export const selectTab = ({ windowId, id }) => {
     browser.windows.update(windowId, { focused: true });
@@ -47,7 +59,7 @@ export const getTabsFromHistory = (title = '', maxResults, days = 1) =>
     searchInHistory({
         text: title,
         maxResults,
-        startTime: Date.now() - 86400000 * days
+        startTime: Date.now() - 86400000 * days,
     });
 
 export const isTab = (tab) => 'windowId' in tab;

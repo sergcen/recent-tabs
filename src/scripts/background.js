@@ -1,122 +1,211 @@
-import TabsStorage from '../lib/TabsStorage';
+import browser from 'webextension-polyfill';
+
+import { RECENT_TABS_STATE_KEY } from '../lib/constants';
 import SettingsStorage from '../lib/Storage';
 import {
-    selectTab,
     moveTab,
     moveTabsToNewWindows,
+    selectTab,
 } from '../lib/TabsApiWrapper';
 
-const tabsStorage = new TabsStorage();
 const settingsStorage = new SettingsStorage();
 
-setInterval(() => tabsStorage.updateHistory(), 60000);
+let tabsUsageMap = new Map();
+let lastCreated = new Set();
+let stateWrite = Promise.resolve();
+const sortTimeouts = new Map();
 
-const cleanTabs = async () => {
+const stateReady = browser.storage.local
+    .get(RECENT_TABS_STATE_KEY)
+    .then((result) => {
+        const state = result[RECENT_TABS_STATE_KEY] || {};
+        const usage = state.tabsUsage || {};
+
+        tabsUsageMap = new Map(
+            Object.entries(usage).map(([tabId, lastUsed]) => [
+                Number(tabId),
+                lastUsed,
+            ])
+        );
+        lastCreated = new Set(state.lastCreated || []);
+    });
+
+const persistState = () => {
+    const state = {
+        tabsUsage: Object.fromEntries(tabsUsageMap),
+        lastCreated: Array.from(lastCreated),
+    };
+
+    stateWrite = stateWrite.then(() =>
+        browser.storage.local.set({ [RECENT_TABS_STATE_KEY]: state })
+    );
+
+    return stateWrite;
+};
+
+const getWindowTabs = (windowId) => browser.tabs.query({ windowId });
+
+const sortTabsByLastUsage = (tabs, reverse = false) => {
+    const sortedTabs = [...tabs].sort((a, b) => {
+        return (
+            (tabsUsageMap.get(b.id) || b.id) - (tabsUsageMap.get(a.id) || a.id)
+        );
+    });
+
+    return reverse ? sortedTabs.reverse() : sortedTabs;
+};
+
+const addTabUsage = async (tabId) => {
+    await stateReady;
+
+    tabsUsageMap.set(tabId, Date.now());
+    await persistState();
+};
+
+const cleanTabs = async (windowId) => {
+    await Promise.all([stateReady, settingsStorage.refresh()]);
+
     const { autoclose, autocloseMaxOpened } = settingsStorage;
 
     if (!autoclose || !autocloseMaxOpened) return;
 
-    const tabs = await tabsStorage.getTabs();
-    const diffCount = autocloseMaxOpened - tabs.length;
+    const tabs = await getWindowTabs(windowId);
+    const excessTabsCount = tabs.length - autocloseMaxOpened;
 
-    if (diffCount < 0) {
-        const ids = tabsStorage
-            .sortTabsByLastUsage(tabs)
-            .slice(diffCount)
-            .filter((tab) => !tab.audible && !tab.pinned)
-            .map((t) => t.id);
+    if (excessTabsCount <= 0) return;
 
-        ids.forEach((id) => tabsStorage.removeTab(id));
+    const ids = sortTabsByLastUsage(tabs)
+        .reverse()
+        .filter((tab) => !tab.audible && !tab.pinned)
+        .slice(0, excessTabsCount)
+        .map((tab) => tab.id);
+
+    if (ids.length > 0) {
+        await browser.tabs.remove(ids);
     }
 };
 
 const noDublicate = async (tabId) => {
+    await settingsStorage.refresh();
+
     const { nodublicate, nodublicateCloseOlder } = settingsStorage;
 
     if (!nodublicate) return;
 
-    const tabs = await tabsStorage.getTabs();
-    const tab = tabs.find((t) => t.id === tabId);
-    const existsTab = tabs.find((t) => t.id !== tab.id && t.url === tab.url);
+    let tab;
+
+    try {
+        tab = await browser.tabs.get(tabId);
+    } catch (error) {
+        return;
+    }
+
+    const tabs = await getWindowTabs(tab.windowId);
+    const existsTab = tabs.find(
+        (candidate) => candidate.id !== tab.id && candidate.url === tab.url
+    );
 
     if (!existsTab) return;
 
     if (nodublicateCloseOlder) {
-        tabsStorage.removeTab(existsTab.id);
+        await browser.tabs.remove(existsTab.id);
     } else {
-        await tabsStorage.removeTab(tab.id);
+        await browser.tabs.remove(tab.id);
         selectTab(existsTab);
     }
 };
 
-let sortTimeout = null;
+const sortTabs = async (windowId) => {
+    await Promise.all([stateReady, settingsStorage.refresh()]);
 
-const sortTabsWithTimeout = () => {
-    const { sorting, sortingTimeout } = settingsStorage;
-    if (!sorting) return;
-
-    clearInterval(sortTimeout);
-
-    sortTimeout = setTimeout(sortTabs, sortingTimeout);
-};
-
-const sortTabs = async () => {
     const { sorting, sortingReverse } = settingsStorage;
 
     if (!sorting) return;
 
-    const tabs = await tabsStorage.getTabs();
-    const tabsMap = new Map(tabs.map((t, index) => [t.id, index]));
+    const tabs = await getWindowTabs(windowId);
+    const sortedTabs = sortTabsByLastUsage(tabs, sortingReverse);
 
-    const sortedTabs = tabsStorage.sortTabsByLastUsage(tabs, sortingReverse);
-
-    const positions = sortedTabs
-        .map((tab, index) => {
-            return {
-                id: tab.id,
-                sortedIndex: index,
-                browserIndex: tabsMap.get(tab.id),
-            };
-        })
-        .filter((t) => t.sortedIndex !== t.browserIndex);
-
-    for (const pos of positions) {
-        await moveTab(pos.id, { index: pos.sortedIndex });
+    for (const [index, tab] of sortedTabs.entries()) {
+        if (tab.index !== index) {
+            await moveTab(tab.id, { index });
+        }
     }
 };
 
+const sortTabsWithTimeout = async (windowId) => {
+    await settingsStorage.refresh();
+
+    const { sorting, sortingTimeout } = settingsStorage;
+
+    if (!sorting) return;
+
+    clearTimeout(sortTimeouts.get(windowId));
+
+    const timeout = Math.min(Number(sortingTimeout) || 500, 25000);
+    const timeoutId = setTimeout(() => {
+        sortTimeouts.delete(windowId);
+        sortTabs(windowId);
+    }, timeout);
+
+    sortTimeouts.set(windowId, timeoutId);
+};
+
 browser.tabs.onActivated.addListener((info) => {
-    tabsStorage.addTab(info.tabId);
-    sortTabsWithTimeout();
+    addTabUsage(info.tabId);
+    sortTabsWithTimeout(info.windowId);
 });
 
-let lastCreated = new Set();
+browser.tabs.onUpdated.addListener(async (tabId, { status }) => {
+    await stateReady;
 
-browser.tabs.onUpdated.addListener((id, { status }) => {
-    if (lastCreated.has(id) && status === 'complete') {
-        noDublicate(id);
-        lastCreated.delete(id);
-    }
+    if (!lastCreated.has(tabId) || status !== 'complete') return;
+
+    lastCreated.delete(tabId);
+    await persistState();
+    await noDublicate(tabId);
 });
 
-browser.tabs.onCreated.addListener((tab) => {
-    tabsStorage.addTab(tab.id);
+browser.tabs.onCreated.addListener(async (tab) => {
+    await stateReady;
 
-    cleanTabs();
+    tabsUsageMap.set(tab.id, Date.now());
     lastCreated.add(tab.id);
+    await persistState();
+    await cleanTabs(tab.windowId);
 });
 
-browser.runtime.onInstalled.addListener(function (details) {
-    if (details.reason == 'install') {
-        chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
+browser.tabs.onRemoved.addListener(async (tabId) => {
+    await stateReady;
+
+    const usageDeleted = tabsUsageMap.delete(tabId);
+    const createdDeleted = lastCreated.delete(tabId);
+
+    if (usageDeleted || createdDeleted) {
+        await persistState();
     }
 });
 
-window.tabsStorage = tabsStorage;
-window.settingsStorage = settingsStorage;
+browser.commands.onCommand.addListener(async (command) => {
+    if (command !== 'move-tabs-new-window') return;
 
-(async () => {
-    await settingsStorage.ready;
+    const tabs = await browser.tabs.query({ currentWindow: true });
+    await moveTabsToNewWindows(tabs);
+});
 
-    cleanTabs();
-})();
+browser.runtime.onInstalled.addListener(async (details) => {
+    if (details.reason === 'install') {
+        if (typeof browser.commands.openShortcutSettings === 'function') {
+            await browser.commands.openShortcutSettings();
+        } else {
+            await browser.tabs.create({
+                url: 'chrome://extensions/shortcuts',
+            });
+        }
+    }
+});
+
+browser.runtime.onStartup.addListener(async () => {
+    const windows = await browser.windows.getAll();
+
+    await Promise.all(windows.map((window) => cleanTabs(window.id)));
+});

@@ -1,5 +1,5 @@
 .tabs-list {
-    max-width: 600px;
+    width: 100%;
     overflow: hidden;
     padding: 0 8px;
     box-sizing: border-box;
@@ -12,7 +12,7 @@
     &__header {
         margin: 10px 0;
         font-size: 14px;
-        color: #AAA;
+        color: #aaa;
     }
 
     &__item {
@@ -35,7 +35,7 @@
         }
 
         &_current {
-            color: #AAA;
+            color: #aaa;
         }
 
         b {
@@ -74,6 +74,3 @@
         color: #aaa;
     }
 }
-
-
-

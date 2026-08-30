@@ -1,5 +1,20 @@
+import browser from 'webextension-polyfill';
+
 const storageSet = browser.storage.local.set;
 const storageGet = browser.storage.local.get;
+
+const SETTINGS_KEYS = [
+    'autoclose',
+    'autocloseMaxOpened',
+    'autocloseExclude',
+    'nodublicate',
+    'nodublicateCloseOlder',
+    'nodublicateExclude',
+    'sorting',
+    'sortingReverse',
+    'sortingTimeout',
+    'showShortcuts',
+];
 
 class Storage {
     constructor() {
@@ -8,9 +23,15 @@ class Storage {
     }
 
     async init() {
-        const data = await storageGet();
+        const data = await storageGet(SETTINGS_KEYS);
 
         this.storage = data || {};
+    }
+
+    refresh() {
+        this.ready = this.init();
+
+        return this.ready;
     }
 
     get(key) {
@@ -19,7 +40,8 @@ class Storage {
 
     set(key, value) {
         this.storage[key] = value;
-        storageSet(this.storage);
+
+        return storageSet({ [key]: value });
     }
 
     get autoclose() {

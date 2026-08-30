@@ -1,23 +1,23 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
-import { getBackgroundPage } from '../lib/TabsApiWrapper';
+import tabsStorage from '../lib/tabsStore';
 
 export function useTabs(query = '', fromCache = false) {
     const [tabs, setTabs] = useState([]);
 
-    const bgWindowPromise = useMemo(() => getBackgroundPage(), [
-        getBackgroundPage,
-    ]);
-
     useEffect(() => {
+        let active = true;
+
         const getTabs = async () => {
-            const bgWindow = await bgWindowPromise;
+            const tabs = await tabsStorage.get(query, fromCache);
 
-            const tabs = await bgWindow.tabsStorage.get(query, fromCache);
-
-            setTabs(tabs);
+            if (active) setTabs(tabs);
         };
         getTabs();
+
+        return () => {
+            active = false;
+        };
     }, [query, fromCache]);
 
     const removeTabs = useCallback((tabsToRemove) => {
@@ -27,9 +27,7 @@ export function useTabs(query = '', fromCache = false) {
 
         setTabs((tabs) => tabs.filter((t) => !idsToRemove.includes(t.id)));
 
-        bgWindowPromise.then((bgWindow) =>
-            bgWindow.tabsStorage.removeTabs(idsToRemove)
-        );
+        tabsStorage.removeTabs(idsToRemove);
     }, []);
 
     return [tabs, removeTabs];

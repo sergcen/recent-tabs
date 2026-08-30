@@ -1,21 +1,21 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 
-import { getBackgroundPage } from '../lib/TabsApiWrapper';
+import tabsStorage from '../lib/tabsStore';
 import { clearDublicates } from '../lib/utils';
 
 export function useHistory(query = '', count) {
     const [historyStorage, setHistory] = useState([]);
 
-    const bgWindowPromise = useMemo(() => getBackgroundPage(), [getBackgroundPage]);
-
     useEffect(() => {
-        const getHistory = async () => {
-            const bgWindow = await bgWindowPromise;
+        let active = true;
 
-            const { history, refinedHistory } = await bgWindow.tabsStorage.getHistory(
+        const getHistory = async () => {
+            const { history, refinedHistory } = await tabsStorage.getHistory(
                 query,
                 count
             );
+
+            if (!active) return;
 
             setHistory({ history, loading: Boolean(refinedHistory) });
 
@@ -23,13 +23,17 @@ export function useHistory(query = '', count) {
                 const rHistory = await refinedHistory.promise;
                 const [h1, h2] = clearDublicates(history, rHistory);
 
-                setHistory({ history: h1.concat(h2), loading: false });
-            } catch(e) {
-
-            }
+                if (active) {
+                    setHistory({ history: h1.concat(h2), loading: false });
+                }
+            } catch (e) {}
         };
 
         getHistory();
+
+        return () => {
+            active = false;
+        };
     }, [query, count]);
 
     return historyStorage;

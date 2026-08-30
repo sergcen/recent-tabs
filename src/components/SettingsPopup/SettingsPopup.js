@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { getBackgroundPage } from '../../lib/TabsApiWrapper';
+import SettingsStorage from '../../lib/Storage';
 
 import './SettingsPopup.scss';
 
@@ -8,13 +8,11 @@ class SettingsPopup extends Component {
 
     storage = null;
 
-    componentDidMount() {
-        getBackgroundPage().then(bg => {
-            const storage = bg.settingsStorage;
+    async componentDidMount() {
+        this.storage = new SettingsStorage();
+        await this.storage.ready;
 
-            this.storage = storage;
-            this.setState(storage.get());
-        });
+        this.setState(this.storage.get());
     }
 
     handleChange(event) {
@@ -29,7 +27,7 @@ class SettingsPopup extends Component {
 
     option(label, propName, type, placeholder) {
         const value = this.storage && this.storage[propName];
-        const handleChange = e => this.handleChange(e);
+        const handleChange = (e) => this.handleChange(e);
 
         let control;
 
@@ -99,7 +97,7 @@ class SettingsPopup extends Component {
                             'autocloseExclude',
                             'textarea',
                             'github/**'
-                        )
+                        ),
                     ]}
                 </div>
                 <div className="settings-popup__group">
@@ -116,7 +114,7 @@ class SettingsPopup extends Component {
                             'sortingTimeout',
                             'number',
                             '500'
-                        )
+                        ),
                     ]}
                 </div>
                 <div className="settings-popup__group">
@@ -137,16 +135,12 @@ class SettingsPopup extends Component {
                             'nodublicateExclude',
                             'textarea',
                             'github/**'
-                        )
+                        ),
                     ]}
                 </div>
                 <div className="settings-popup__group">
                     <h3>Show shortcuts help</h3>
-                    {this.option(
-                        'Enabled',
-                        'showShortcuts',
-                        'checkbox'
-                    )}
+                    {this.option('Enabled', 'showShortcuts', 'checkbox')}
                 </div>
             </form>
         );

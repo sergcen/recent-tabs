@@ -7,24 +7,18 @@ import React, {
 } from 'react';
 import TabsList from '../TabsList';
 
-import throttle from 'lodash.throttle';
 import Hotkeys from '../../lib/Hotkeys';
 import '../../polyfills/scrollIntoViewIfNeeded';
 
 import { useTabs } from '../../hooks/tabs';
 
-import {
-    createTab,
-    isTab,
-    moveTabsToNewWindows,
-    selectTab,
-} from '../../lib/TabsApiWrapper';
+import { createTab, isTab, selectTab } from '../../lib/TabsApiWrapper';
 
 import './TabsPopup.scss';
 import { useHistory } from '../../hooks/history';
 import { useSelectedTab } from '../../hooks/selectedTab';
 import { clearDublicates } from '../../lib/utils';
-import { useSettings } from '../../hooks/getBackgroundPage';
+import { useSettings } from '../../hooks/settings';
 import { useBookmarks } from '../../hooks/bookmarks';
 
 const TabsPopup = () => {
@@ -61,20 +55,6 @@ const TabsPopup = () => {
             inputRef.current.focus();
         }
     }, []);
-
-    useEffect(() => {
-        const listener = (command) => {
-            if (command === 'move-tabs-new-window') {
-                moveTabsToNewWindows(tabs);
-            }
-        };
-
-        browser.commands.onCommand.addListener(listener);
-
-        return () => {
-            browser.commands.onCommand.removeListener(listener);
-        };
-    }, [tabs]);
 
     const copyHandler = useCallback(
         (e) => {
@@ -126,9 +106,7 @@ const TabsPopup = () => {
     const submitSelectTab = useCallback(
         (tab) => {
             if (filteredBookmarks.includes(tab)) {
-                tab.url ?
-                    createTab(tab) :
-                    setBookmarkId(tab.id);
+                tab.url ? createTab(tab) : setBookmarkId(tab.id);
                 return;
             }
 
