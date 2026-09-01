@@ -18,3 +18,9 @@ export function clearDublicates(...collections) {
 
     return result;
 }
+
+export const removeTabsFromIndex = (tabs, selectedIndex, removeTabs) => {
+    if (selectedIndex > tabs.length - 1) return;
+
+    removeTabs(tabs.slice(selectedIndex));
+};

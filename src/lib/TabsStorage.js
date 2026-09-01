@@ -15,6 +15,7 @@ import {
 
 const SEARCH_IN_HISTORY_TIMEOUT = 300;
 const COUNT_HISTORY_RESULT_IN_CACHE = 1000;
+const SCOPED_HISTORY_CANDIDATE_LIMIT = 1000;
 const HISTORY_APPEND_LIMIT = 15;
 // need some extra count for query from history
 // clearDuplicates can removes some history items
@@ -155,9 +156,10 @@ class TabsStorage {
             descriptor.text,
             ...descriptor.shortcut.patterns,
         ].filter(Boolean);
+        const candidateCount = Math.max(count, SCOPED_HISTORY_CANDIDATE_LIMIT);
         const historyCollections = await Promise.all(
             [...new Set(searchTerms)].map((term) =>
-                searchBrowserHistory(term, count, 1000),
+                searchBrowserHistory(term, candidateCount, 1000),
             ),
         );
         const seenUrls = new Set();

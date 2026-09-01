@@ -17,7 +17,7 @@ import { createTab, isTab, selectTab } from '../../lib/TabsApiWrapper';
 import './TabsPopup.scss';
 import { useHistory } from '../../hooks/history';
 import { useSelectedTab } from '../../hooks/selectedTab';
-import { clearDublicates } from '../../lib/utils';
+import { clearDublicates, removeTabsFromIndex } from '../../lib/utils';
 import { useSettings } from '../../hooks/settings';
 import { useBookmarks } from '../../hooks/bookmarks';
 import { parseDomainSearchQuery } from '../../lib/DomainSearchShortcuts';
@@ -93,11 +93,11 @@ const TabsPopup = () => {
         (e) => {
             Hotkeys(e, {
                 'shift+ArrowDown': () => {
-                    if (selectedTabIndex > tabs.length - 1) return;
-
-                    const tabsToRemove = tabs.slice(selectedTabIndex);
-
-                    removeTabsHandler(tabsToRemove);
+                    removeTabsFromIndex(
+                        filteredTabs,
+                        selectedTabIndex,
+                        removeTabsHandler,
+                    );
                 },
                 'shift+ArrowRight': () => {
                     if (isTab(selectedTab)) removeTabs([selectedTab]);
@@ -107,7 +107,13 @@ const TabsPopup = () => {
                 Enter: () => submitSelectTab(selectedTab),
             });
         },
-        [selectedTab, removeTabs, removeTabsHandler, setSelectedTab],
+        [
+            filteredTabs,
+            selectedTab,
+            removeTabs,
+            removeTabsHandler,
+            setSelectedTab,
+        ],
     );
 
     const submitSelectTab = useCallback(

@@ -2,9 +2,11 @@
 
 ## Current baseline
 
-The current baseline is commit `96f48ab` (`feat: migrate extension to Manifest
-V3`, 2026-08-30). It is a working modernization of the original 2020 extension,
-not the old Manifest V2 snapshot.
+The modernization baseline is commit `96f48ab` (`feat: migrate extension to
+Manifest V3`, 2026-08-30). It is a working modernization of the original 2020
+extension, not the old Manifest V2 snapshot. The rest of this guide describes
+the current feature branch, including changes made after `96f48ab`. That commit
+alone had 8 tests and did not include domain search shortcuts.
 
 The verified stack is:
 
@@ -45,10 +47,11 @@ npm run build:chrome
 npm run build:firefox
 ```
 
-At baseline on macOS arm64 with Node 24.12.0 and npm 11.6.2:
+At the current feature-branch head on macOS arm64 with Node 24.12.0 and npm
+11.6.2:
 
 - `npm ci` succeeds;
-- all 28 Jest tests pass;
+- all 30 Jest tests pass;
 - both Chrome and Firefox production builds succeed without webpack errors;
 - packages are written to `packages/recent-tabs.v<version>.chrome.zip` and
   `packages/recent-tabs.v<version>.firefox.xpi`;
@@ -287,9 +290,10 @@ These are baseline facts, not instructions to fix unrelated code opportunistical
 - `@babel/preset-env` currently targets the build-time Node version, not an
   explicit browser compatibility matrix.
 - Automated coverage covers `FilterTabs`, domain-shortcut parsing/matching,
-  scoped history candidate merging, StorageArea receiver binding, and the source
-  manifest. There is no coverage for background policies, state persistence,
-  hooks, keyboard destruction, settings UI, or generated manifests.
+  scoped history candidate merging, bulk-close rendered-index selection,
+  StorageArea receiver binding, and the source manifest. There is no coverage
+  for background policies, state persistence, hooks, full keyboard event
+  handling, settings UI, or generated manifests.
 - Chrome and Firefox packages compile, but this does not prove runtime behaviour
   in Chrome, Yandex Browser, or Firefox.
 

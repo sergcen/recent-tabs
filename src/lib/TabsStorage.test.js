@@ -130,4 +130,48 @@ describe('TabsStorage scoped history search', () => {
             'first.test',
         ]);
     });
+
+    test('applies the result limit after scoped candidate filtering', async () => {
+        const matching = {
+            id: 'matching',
+            title: 'task inside scope',
+            url: 'https://example.com/task',
+            lastVisitTime: 10,
+        };
+        const outside = [1, 2].map((id) => ({
+            id: `outside-${id}`,
+            title: 'task outside scope',
+            url: `https://outside.test/${id}`,
+            lastVisitTime: 30 - id,
+        }));
+        const wrongText = [1, 2].map((id) => ({
+            id: `wrong-text-${id}`,
+            title: 'unrelated page',
+            url: `https://example.com/${id}`,
+            lastVisitTime: 20 - id,
+        }));
+
+        mockHistorySearch.mockImplementation(({ text, maxResults }) => {
+            const items =
+                text === 'task'
+                    ? [...outside, matching]
+                    : [...wrongText, matching];
+
+            return Promise.resolve(items.slice(0, maxResults));
+        });
+
+        await expect(
+            tabsStorage.searchHistory(
+                {
+                    text: 'task',
+                    shortcut: { key: 'ex', patterns: ['example.com'] },
+                },
+                2,
+            ),
+        ).resolves.toEqual([matching]);
+        expect(mockHistorySearch).toHaveBeenCalledTimes(2);
+        expect(mockHistorySearch).toHaveBeenCalledWith(
+            expect.objectContaining({ maxResults: 1000 }),
+        );
+    });
 });
