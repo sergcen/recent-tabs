@@ -60,6 +60,30 @@ body {
             margin-right: 2px;
         }
     }
+
+    &-Scope {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        width: fit-content;
+        margin: -5px 10px 13px;
+        padding: 2px 4px;
+        border-radius: 4px;
+        background: rgb(223, 232, 237);
+        color: #334;
+        font-size: 12px;
+
+        b {
+            font-size: 13px;
+        }
+    }
+
+    &-Empty {
+        padding: 24px 12px;
+        color: #666;
+        font-size: 14px;
+        text-align: center;
+    }
 }
 
 .filterInput {

@@ -1,7 +1,6 @@
 import browser from 'webextension-polyfill';
 
-const storageSet = browser.storage.local.set;
-const storageGet = browser.storage.local.get;
+const storageLocal = browser.storage.local;
 
 const SETTINGS_KEYS = [
     'autoclose',
@@ -14,6 +13,7 @@ const SETTINGS_KEYS = [
     'sortingReverse',
     'sortingTimeout',
     'showShortcuts',
+    'domainSearchShortcuts',
 ];
 
 class Storage {
@@ -23,7 +23,7 @@ class Storage {
     }
 
     async init() {
-        const data = await storageGet(SETTINGS_KEYS);
+        const data = await storageLocal.get(SETTINGS_KEYS);
 
         this.storage = data || {};
     }
@@ -41,7 +41,7 @@ class Storage {
     set(key, value) {
         this.storage[key] = value;
 
-        return storageSet({ [key]: value });
+        return storageLocal.set({ [key]: value });
     }
 
     get autoclose() {
@@ -74,6 +74,12 @@ class Storage {
 
     get showShortcuts() {
         return this.storage.showShortcuts === false ? false : true;
+    }
+
+    get domainSearchShortcuts() {
+        return Array.isArray(this.storage.domainSearchShortcuts)
+            ? this.storage.domainSearchShortcuts
+            : [];
     }
 }
 

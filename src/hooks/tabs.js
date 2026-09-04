@@ -1,34 +1,47 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 import tabsStorage from '../lib/tabsStore';
 
-export function useTabs(query = '', fromCache = false) {
-    const [tabs, setTabs] = useState([]);
+export function useTabs(search, fromCache = false) {
+    const [result, setResult] = useState({ tabs: [], search: null });
 
     useEffect(() => {
+        if (!search) return;
+
         let active = true;
 
         const getTabs = async () => {
-            const tabs = await tabsStorage.get(query, fromCache);
+            const tabs = await tabsStorage.get(search, fromCache);
 
-            if (active) setTabs(tabs);
+            if (active) setResult({ tabs, search });
         };
-        getTabs();
+        getTabs().catch(() => {
+            if (active) setResult({ tabs: [], search });
+        });
 
         return () => {
             active = false;
         };
-    }, [query, fromCache]);
+    }, [search, fromCache]);
 
     const removeTabs = useCallback((tabsToRemove) => {
         const idsToRemove = tabsToRemove.map((t) => t.id);
 
         if (idsToRemove.length === 0) return;
 
-        setTabs((tabs) => tabs.filter((t) => !idsToRemove.includes(t.id)));
+        setResult((current) => ({
+            ...current,
+            tabs: current.tabs.filter((t) => !idsToRemove.includes(t.id)),
+        }));
 
         tabsStorage.removeTabs(idsToRemove);
     }, []);
 
-    return [tabs, removeTabs];
+    const isCurrentSearch = result.search === search;
+
+    return [
+        isCurrentSearch ? result.tabs : [],
+        removeTabs,
+        Boolean(search) && !isCurrentSearch,
+    ];
 }

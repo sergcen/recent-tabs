@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import browser from 'webextension-polyfill';
 
-import filterTabs from '../lib/FilterTabs';
+import { filterItemsBySearch } from '../lib/DomainSearchShortcuts';
 
 const flatBookmarks = (...list) => {
     const res = [];
@@ -16,55 +16,92 @@ const flatBookmarks = (...list) => {
     return res;
 };
 
-export function useBookmarks(query = '', bookmarkId = null, limit = 5) {
-    const [bookmarks, setBookmarks] = useState([]);
+export function useBookmarks(search, bookmarkId = null, limit = 5) {
+    const [result, setResult] = useState({ bookmarks: [], search: null });
     const [allBookmarks, setAllBookmarks] = useState(null);
 
     useEffect(() => {
-        browser.bookmarks.getTree().then((allBookmarks) => {
-            if (allBookmarks.length > 0) {
-                const flattenBookmarks = flatBookmarks(allBookmarks[0]);
+        browser.bookmarks
+            .getTree()
+            .then((allBookmarks) => {
+                if (allBookmarks.length > 0) {
+                    const flattenBookmarks = flatBookmarks(allBookmarks[0]);
 
-                setAllBookmarks(flattenBookmarks.filter((b) => b.title));
-            }
-        });
+                    setAllBookmarks(flattenBookmarks.filter((b) => b.title));
+                } else {
+                    setAllBookmarks([]);
+                }
+            })
+            .catch(() => setAllBookmarks([]));
     }, []);
 
     useEffect(() => {
-        const getBookmarks = async () => {
-            if (bookmarkId) {
-                const bookmarksSubtree = await browser.bookmarks.getSubTree(
-                    bookmarkId
-                );
+        if (!search) return;
 
-                setBookmarks((bookmarks) => {
-                    let newBookmarks = [...bookmarks];
-                    const index = bookmarks.findIndex(
-                        (b) => b.id === bookmarkId
+        let active = true;
+
+        const getBookmarks = async () => {
+            if (!bookmarkId && allBookmarks === null) return;
+
+            if (bookmarkId) {
+                const bookmarksSubtree =
+                    await browser.bookmarks.getSubTree(bookmarkId);
+
+                if (!active) return;
+
+                setResult((current) => {
+                    let newBookmarks = [...current.bookmarks];
+                    const index = current.bookmarks.findIndex(
+                        (b) => b.id === bookmarkId,
                     );
 
                     newBookmarks.splice(
                         index,
                         1,
-                        ...bookmarksSubtree[0].children
+                        ...bookmarksSubtree[0].children,
                     );
-                    return newBookmarks;
+                    return { bookmarks: newBookmarks, search };
                 });
             } else {
                 let newBookmarks = [];
                 if (allBookmarks) {
-                    newBookmarks = filterTabs(allBookmarks, query, limit);
+                    newBookmarks = filterItemsBySearch(
+                        allBookmarks,
+                        search,
+                        limit,
+                    );
                 }
-                if (newBookmarks.length === 0 && query) {
-                    newBookmarks = await browser.bookmarks.search(query);
+                if (newBookmarks.length === 0 && search.text) {
+                    const searchedBookmarks = await browser.bookmarks.search(
+                        search.text,
+                    );
+                    newBookmarks = search.shortcut
+                        ? filterItemsBySearch(
+                              searchedBookmarks,
+                              search,
+                              limit,
+                          )
+                        : searchedBookmarks;
                 }
 
-                setBookmarks(newBookmarks);
+                if (active) {
+                    setResult({ bookmarks: newBookmarks, search });
+                }
             }
         };
 
-        getBookmarks();
-    }, [query, bookmarkId, limit, allBookmarks]);
+        getBookmarks().catch(() => {
+            if (active) setResult({ bookmarks: [], search });
+        });
+        return () => {
+            active = false;
+        };
+    }, [search, bookmarkId, limit, allBookmarks]);
 
-    return bookmarks;
+    const isCurrentSearch = result.search === search;
+
+    return {
+        bookmarks: isCurrentSearch ? result.bookmarks : [],
+        loading: Boolean(search) && !isCurrentSearch,
+    };
 }

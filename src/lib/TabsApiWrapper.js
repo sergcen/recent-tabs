@@ -62,4 +62,4 @@ export const getTabsFromHistory = (title = '', maxResults, days = 1) =>
         startTime: Date.now() - 86400000 * days,
     });
 
-export const isTab = (tab) => 'windowId' in tab;
+export const isTab = (tab) => Boolean(tab && 'windowId' in tab);
